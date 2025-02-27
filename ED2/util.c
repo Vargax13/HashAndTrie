@@ -119,7 +119,7 @@ void processar_texto(char* texto, char* palavras[], int* posicoes[], int* num_pa
 
     // Tokenização
     char* saveptr;
-    char* token = strtok_r(texto_copia, " \t\n\r\f\v.,;:!?\"'()[]{}-", &saveptr);
+    char* token = strtok_r(texto_copia, " \t\n\r\f\v.,;:!?\"'()[]{}", &saveptr);
     while (token && *num_palavras < MAX_TEXT_SIZE) {
         palavras[*num_palavras] = strdup(token);
         if (!palavras[*num_palavras]) {
@@ -144,7 +144,7 @@ void processar_texto(char* texto, char* palavras[], int* posicoes[], int* num_pa
         }
         posicoes[*num_palavras][0] = 0; // Inicializa o contador
         (*num_palavras)++;
-        token = strtok_r(NULL, " \t\n\r\f\v.,;:!?\"'()[]{}-", &saveptr);
+        token = strtok_r(NULL, " \t\n\r\f\v.,;:!?\"'()[]{}", &saveptr);
     }
 
     // Contar ocorrências
