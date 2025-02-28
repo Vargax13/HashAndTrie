@@ -75,6 +75,8 @@ static char normalize_char(char c) {
         case 0xF1: // ñ
         case 0xD1: // Ñ
             return 'n';
+            case '-': // Adiciona caso para hífen
+            return '-'; // Mantém o hífen como caractere válido
         default:
             return tolower(uc);
     }
@@ -82,11 +84,8 @@ static char normalize_char(char c) {
 
 TrieNode* trie_create_node() {
     TrieNode* node = malloc(sizeof(TrieNode));
-    if (!node) {
-        fprintf(stderr, "Erro ao criar nó\n");
-        exit(EXIT_FAILURE);
-    }
-    for (int i = 0; i < 26; i++) node->children[i] = NULL;
+    if (!node) exit(EXIT_FAILURE);    
+    for (int i = 0; i < 27; i++) node->children[i] = NULL;
     node->is_end_of_word = 0;
     node->occurrences = malloc(10 * sizeof(int));
     node->num_occurrences = 0;
@@ -95,17 +94,26 @@ TrieNode* trie_create_node() {
     return node;
 }
 
+// Modificar a verificação de índice na inserção para incluir hífen
 void trie_insert(TrieNode* root, const char* word, int position) {
     TrieNode* current = root;
     char original_word[MAX_WORD_SIZE];
     strncpy(original_word, word, MAX_WORD_SIZE - 1);
-    original_word[MAX_WORD_SIZE - 1] = '\0'; // Garante terminação nula
+    original_word[MAX_WORD_SIZE - 1] = '\0';
 
     while (*word) {
         char normalized = normalize_char(*word);
-        int index = normalized - 'a';
+        int index;
         
-        if (index < 0 || index >= 26) {
+        // Mapeia hífen para índice 26
+        if (normalized == '-') {
+            index = 26;
+        } else {
+            index = normalized - 'a';
+        }
+        
+        // Verificação ajustada para índice 26
+        if (index < 0 || index > 26) { 
             word++;
             continue;
         }
@@ -146,7 +154,7 @@ int* trie_search(TrieNode* root, const char* word, int* num_occurrences) {
         char normalized = normalize_char(*word);
         int index = normalized - 'a';
         
-        if (index < 0 || index >= 26 || current->children[index] == NULL) {
+        if (index < 0 || index >= 27 || current->children[index] == NULL) {
             *num_occurrences = 0;
             return NULL;
         }
@@ -187,7 +195,7 @@ void _trie_traverse(TrieNode* node, char* prefix, int level,
         (*num_words)++;
     }
     
-    for (int i = 0; i < 26; i++) {
+    for (int i = 0; i < 27; i++) {
         if (node->children[i]) {
             prefix[level] = 'a' + i;
             prefix[level + 1] = '\0';
@@ -206,7 +214,7 @@ void trie_get_all_words(TrieNode* root, char* prefix, char*** words, int*** posi
 void trie_destroy(TrieNode* root) {
     if (root == NULL) return;
     
-    for (int i = 0; i < 26; i++) {
+    for (int i = 0; i < 27; i++) {
         if (root->children[i]) {
             trie_destroy(root->children[i]);
         }
@@ -478,21 +486,26 @@ void imprimir_trie_arvore_recursivo(TrieNode* node, char* prefix, int is_last, c
     
     // Conta quantos filhos o nó tem para determinar qual é o último
     int count_children = 0;
-    for (int i = 0; i < 26; i++) {
+    for (int i = 0; i < 27; i++) { // Conta o número de filhos
         if (node->children[i] != NULL) {
             count_children++;
         }
     }
     
-    // Percorre os filhos
     int current_child = 0;
-    for (int i = 0; i < 26; i++) {
+    for (int i = 0; i < 27; i++) { // Alterado para 27
         if (node->children[i] != NULL) {
-            // Adiciona a letra atual ao caminho
-            path[level] = 'a' + i;
+            char letra;
+            if (i == 26) { // Trata hífen
+                letra = '-';
+            } else {
+                letra = 'a' + i;
+            }
+
+            path[level] = letra;
             path[level + 1] = '\0';
             
-            // Chama recursivamente para este filho
+            // Chama recursivamente
             imprimir_trie_arvore_recursivo(
                 node->children[i], 
                 prefix, 

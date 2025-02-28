@@ -37,7 +37,7 @@
  
  /* Definição da estrutura do nó da Trie */
  typedef struct TrieNode {
-     struct TrieNode* children[26];
+     struct TrieNode* children[27]; // Alterado para 27 (26 letras + hífen)
      int is_end_of_word;
      int* occurrences;
      int num_occurrences;
