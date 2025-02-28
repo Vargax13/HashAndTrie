@@ -1,37 +1,37 @@
 /**
- * @file main.c
- * @brief Implementação principal do programa de índice remissivo
- *
- * Este programa gerencia a criação e manipulação de índices remissivos utilizando
- * duas estruturas de dados diferentes: tabela hash e árvore trie. Permite carregar
- * textos e palavras-chave, criar índices, visualizar e excluir as estruturas.
- *
- * @note Utiliza variáveis globais compartilhadas para gerenciar os dados comuns
- * entre as estruturas.
- *
- * Funcionalidades principais:
- * - Carregamento de texto fonte
- * - Carregamento de palavras-chave
- * - Criação de índices (hash e/ou trie)
- * - Impressão dos índices
- * - Visualização da representação em árvore
- * - Exclusão dos índices
- *
- * Estruturas de dados suportadas:
- * - Tabela Hash
- * - Árvore Trie (árvore de pesquisa digital)
- *
- * @see indice_remissivo.h
- * @see trie.h
- * @see hash.h
- *
- * Limitações:
- * - Tamanho máximo do texto definido por MAX_TEXT_SIZE
- * - Número máximo de palavras-chave definido por MAX_KEYWORDS
- * - Tamanho máximo de palavra definido por MAX_WORD_SIZE
- *
+ * @brief Programa principal para gerenciamento de índice remissivo usando estruturas Hash e Trie
+ * 
  * @author Eduardo Brito, Eric Cesconetti, Gabriel Vargas e Paulo Albuquerque
- * @date 25/02/2025
+ * @date 28/02/2025
+ * 
+ * Este programa implementa um sistema de índice remissivo que permite:
+ * - Carregar textos de arquivos
+ * - Carregar palavras-chave
+ * - Criar índices usando estruturas Hash e/ou Trie
+ * - Imprimir índices
+ * - Visualizar representações em árvore
+ * - Excluir índices
+ * 
+ * O programa utiliza duas estruturas de dados principais:
+ * 1. Tabela Hash: Para busca rápida de palavras
+ * 2. Árvore Trie: Para busca eficiente de prefixos
+ * 
+ * Estruturas compartilhadas:
+ * - texto_comum: Armazena o texto carregado
+ * - keywords_comum: Lista de palavras-chave
+ * - palavras_comum: Array de palavras processadas
+ * - posicoes_comum: Array de posições das palavras
+ * 
+ * Funções principais:
+ * - carregar_texto(): Carrega texto de um arquivo
+ * - carregar_lista_keywords(): Carrega palavras-chave de um arquivo
+ * - criar_indice_menu(): Cria índices nas estruturas selecionadas
+ * - imprimir_indice_menu(): Exibe os índices criados
+ * - imprimir_representacao_arvore_menu(): Mostra representação visual das estruturas
+ * - excluir_indice_menu(): Remove índices selecionados
+ * 
+ * @note O programa gerencia automaticamente a memória, liberando recursos quando necessário
+ * @warning Certifique-se de ter memória suficiente para processar textos grandes
  */
 
 #include "indice_remissivo.h"
@@ -153,6 +153,19 @@ static void limpar_recursos_comuns(void) {
     num_palavras_comum = texto_carregado = 0;
 }
 
+static void sanitize_keyword(char *str) {
+    char *src = str;
+    char *dst = str;
+    while (*src) {
+        unsigned char uc = (unsigned char)*src;
+        if (isalnum(uc) || uc == '-' || uc > 127) {
+            *dst++ = *src;
+        }
+        src++;
+    }
+    *dst = '\0';
+}
+
 static void carregar_texto(void) {
     char filename[256];
     
@@ -227,11 +240,15 @@ void carregar_lista_keywords(void) {
             
             char *token = strtok(buffer, ",");  // Divide a linha por vírgulas
             while (token && num_keywords_comum < MAX_KEYWORDS) {
-                // Remove espaços no início e fim da palavra
+                // Remove espaços e sanitiza
                 while (*token == ' ') token++;
                 int len = strlen(token);
                 while (len > 0 && token[len-1] == ' ') token[--len] = '\0';
-                
+    
+                // Sanitiza o token (remove pontuações)
+                sanitize_keyword(token);
+                len = strlen(token);
+    
                 if (len > 0) {
                     strncpy(keywords_comum[num_keywords_comum], token, MAX_WORD_SIZE - 1);
                     keywords_comum[num_keywords_comum][MAX_WORD_SIZE - 1] = '\0';
