@@ -2,6 +2,9 @@
  * @file indice_remissivo.h
  * @brief Sistema de índice remissivo utilizando estruturas Hash e Trie
  * 
+ * @author Eduardo Brito, Eric Cesconetti, Gabriel Vargas e Paulo Albuquerque
+ * @date 25/02/2025
+ * 
  * Este arquivo de cabeçalho define as estruturas e funções necessárias para
  * criar e manipular um índice remissivo de palavras-chave em um texto.
  * O sistema suporta duas estruturas de dados diferentes: Hash e Trie.
@@ -22,9 +25,6 @@
  * - ESTRUTURA_HASH (1): Utiliza apenas tabela hash
  * - ESTRUTURA_TRIE (2): Utiliza apenas árvore trie
  * - ESTRUTURA_AMBAS (3): Utiliza ambas as estruturas
- * 
- * @author Eduardo Brito, Eric Cesconetti, Gabriel Vargas e Paulo Albuquerque
- * @date 25/02/2025
  */
 #ifndef INDICE_REMISSIVO_H
 #define INDICE_REMISSIVO_H

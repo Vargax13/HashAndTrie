@@ -1,37 +1,42 @@
 /**
- * @brief Programa principal para gerenciamento de índice remissivo usando estruturas Hash e Trie
+ * @brief Sistema de Índice Remissivo
  * 
- * @author Eduardo Brito, Eric Cesconetti, Gabriel Vargas e Paulo Albuquerque
+ * @authors Eduardo Brito, Eric Cesconetti, Gabriel Vargas e Paulo Albuquerque
  * @date 28/02/2025
  * 
  * Este programa implementa um sistema de índice remissivo que permite:
- * - Carregar textos de arquivos
- * - Carregar palavras-chave
+ * - Carregar texto de um arquivo
+ * - Carregar palavras-chave de um arquivo
  * - Criar índices usando estruturas Hash e/ou Trie
- * - Imprimir índices
- * - Visualizar representações em árvore
+ * - Imprimir índices remissivos
+ * - Visualizar representação em árvore das estruturas
  * - Excluir índices
  * 
  * O programa utiliza duas estruturas de dados principais:
  * 1. Tabela Hash: Para busca rápida de palavras
  * 2. Árvore Trie: Para busca eficiente de prefixos
  * 
- * Estruturas compartilhadas:
- * - texto_comum: Armazena o texto carregado
+ * Recursos e Limitações:
+ * - Suporte a caracteres UTF-8
+ * - Gerenciamento automático de memória
+ * - Tratamento de arquivos vazios ou inválidos
+ * - Validação de entrada do usuário
+ * 
+ * Funções Principais:
+ * - carregar_texto(): Carrega e processa arquivo de texto
+ * - carregar_lista_keywords(): Carrega palavras-chave de arquivo
+ * - criar_indice_menu(): Cria índices nas estruturas selecionadas
+ * - imprimir_indice_menu(): Exibe índices remissivos
+ * - imprimir_representacao_arvore_menu(): Visualiza estrutura em árvore
+ * - excluir_indice_menu(): Remove índices e libera memória
+ * 
+ * Variáveis Globais:
+ * - texto_comum: Armazena texto carregado
  * - keywords_comum: Lista de palavras-chave
  * - palavras_comum: Array de palavras processadas
  * - posicoes_comum: Array de posições das palavras
  * 
- * Funções principais:
- * - carregar_texto(): Carrega texto de um arquivo
- * - carregar_lista_keywords(): Carrega palavras-chave de um arquivo
- * - criar_indice_menu(): Cria índices nas estruturas selecionadas
- * - imprimir_indice_menu(): Exibe os índices criados
- * - imprimir_representacao_arvore_menu(): Mostra representação visual das estruturas
- * - excluir_indice_menu(): Remove índices selecionados
- * 
- * @note O programa gerencia automaticamente a memória, liberando recursos quando necessário
- * @warning Certifique-se de ter memória suficiente para processar textos grandes
+ * @note Requer alocação dinâmica de memória
  */
 
 #include "indice_remissivo.h"
@@ -40,6 +45,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 
 // Declarações de funções externas
 extern void set_texto_hash(char*);
@@ -89,6 +95,7 @@ static int texto_carregado;
 static int keywords_carregadas;
 
 int main() {
+    setlocale(LC_ALL, "");
     palavras_comum = calloc(MAX_TEXT_SIZE, sizeof(char*));
     posicoes_comum = calloc(MAX_TEXT_SIZE, sizeof(int*));
     
