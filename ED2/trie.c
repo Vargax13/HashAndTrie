@@ -1,50 +1,42 @@
 /**
  * @file trie.c
- * @brief Implementação de uma estrutura de dados Trie para indexação de texto com suporte a caracteres acentuados
- * 
- * @author Eduardo Brito
- * @author Eric Cesconetti
- * @author Gabriel Vargas 
- * @author Paulo Albuquerque
- * @date 25/02/2025
+ * @brief Implementation of a Trie data structure for text indexing with UTF-8 support
  *
- * Esta implementação fornece um sistema de indexação de texto baseado em Trie com os seguintes recursos:
- * - Suporte para caracteres acentuados (conjunto de caracteres Latin-1)
- * - Armazenamento e recuperação de palavras sem distinção entre maiúsculas e minúsculas
- * - Armazenamento das posições das palavras no texto
- * - Preservação da palavra original (mantém acentos na saída)
- * - Otimização baseada em HashMap para buscas de palavras-chave
- * - Recursos de representação visual da árvore
+ * This implementation provides a Trie-based text indexing system that:
+ * - Supports UTF-8 encoded text
+ * - Handles accented characters (normalizing them to their base form)
+ * - Maintains word positions in the original text
+ * - Supports hyphens in words
+ * - Preserves original word forms while using normalized forms for searching
  *
- * Componentes Principais:
- * @struct TrieNode - Estrutura básica do nó da Trie
- * @struct KeywordEntry - Estrutura de entrada para o HashMap de palavras-chave
- * @struct KeywordHashMap - Estrutura HashMap para buscas otimizadas de palavras-chave
- * @struct WordEntry - Estrutura auxiliar para saída ordenada de palavras
+ * Key Features:
+ * - Character normalization for accent-insensitive searching
+ * - UTF-8 character handling
+ * - Position tracking for word occurrences
+ * - Tree visualization capabilities
+ * - Case-insensitive word matching
+ * - Support for special characters (like hyphens)
  *
- * Funções Principais:
- * - trie_create_node(): Cria um novo nó Trie
- * - trie_insert(): Insere uma palavra com sua posição
- * - trie_search(): Busca uma palavra e retorna suas posições
- * - criar_indice_trie(): Cria um índice Trie a partir de palavras e posições
- * - criar_indice_trie_texto(): Cria um índice Trie diretamente do texto
- * - imprimir_trie_arvore(): Imprime uma representação visual da Trie
- * - imprimir_indice_trie(): Imprime o índice em ordem alfabética
+ * Main Functions:
+ * - trie_create_node(): Creates a new Trie node
+ * - trie_insert(): Inserts a word with its position
+ * - trie_search(): Searches for a word and returns its positions
+ * - criar_indice_trie(): Creates an index from text and keywords
+ * - imprimir_trie_arvore(): Visualizes the Trie structure
+ * - imprimir_indice_trie(): Displays the index contents
  *
- * Gerenciamento de Memória:
- * - Toda memória alocada dinamicamente é gerenciada com operações apropriadas de liberação
- * - Expansões de array são tratadas automaticamente quando necessário
- * - Limpeza de memória é realizada por trie_destroy()
+ * Memory Management:
+ * - Dynamic allocation for nodes and position arrays
+ * - Automatic expansion of position arrays when needed
+ * - Proper memory cleanup in trie_destroy()
  *
- * Considerações de Desempenho:
- * - Busca de palavras: O(m) onde m é o comprimento da palavra
- * - Complexidade espacial: O(TAMANHO_ALFABETO * N) onde N é o total de nós
- * - Otimização HashMap: O(1) caso médio para buscas de palavras-chave
- * - Ordenação da lista de palavras: O(n log n) onde n é o número de palavras
+ * Performance Characteristics:
+ * - Search: O(m) where m is the length of the word
+ * - Insertion: O(m) where m is the length of the word
+ * - Space: O(ALPHABET_SIZE * n) where n is the number of nodes
  *
- * @note Esta implementação é projetada para lidar com codificação Latin-1
- * @note Todas as palavras são armazenadas em minúsculas mas a forma original é preservada
- * @note A indexação de posição começa em 1
+ * @note This implementation assumes valid UTF-8 input text
+ * @note The maximum word size is defined by MAX_WORD_SIZE
  */
 #include "trie.h"
 #include <stdlib.h>
@@ -52,122 +44,212 @@
 #include <stdio.h>
 #include <ctype.h>
 
-static char normalize_char(char c) {
-    unsigned char uc = (unsigned char)c;
-    switch (uc) {
-        case 0xE1: case 0xE0: case 0xE2: case 0xE3: case 0xE4: case 0xE5: // á, à, â, ã, ä, å
-          return 'a';
-        case 0xE9: case 0xE8: case 0xEA: case 0xEB: // é, è, ê, ë
-        case 0xC9: case 0xC8: case 0xCA: case 0xCB: // É, È, Ê, Ë
-            return 'e';
-        case 0xED: case 0xEC: case 0xEE: case 0xEF: // í, ì, î, ï
-        case 0xCD: case 0xCC: case 0xCE: case 0xCF: // Í, Ì, Î, Ï
-            return 'i';
-        case 0xF3: case 0xF2: case 0xF4: case 0xF5: case 0xF6: // ó, ò, ô, õ, ö
-        case 0xD3: case 0xD2: case 0xD4: case 0xD5: case 0xD6: // Ó, Ò, Ô, Õ, Ö
-            return 'o';
-        case 0xFA: case 0xF9: case 0xFC: case 0xFB: // ú, ù, ü, û
-        case 0xDA: case 0xD9: case 0xDC: case 0xDB: // Ú, Ù, Ü, Û
-            return 'u';
-        case 0xE7: // ç
-        case 0xC7: // Ç
-            return 'c';
-        case 0xF1: // ñ
-        case 0xD1: // Ñ
-            return 'n';
-            case '-': // Adiciona caso para hífen
-            return '-'; // Mantém o hífen como caractere válido
-        default:
-            return tolower(uc);
+static char normalize_utf8_char(const char* utf8_char) {
+    if (!utf8_char || !*utf8_char) return '\0';
+
+    // Verifica caracteres multi-byte (UTF-8)
+    unsigned char c0 = (unsigned char)utf8_char[0];
+    unsigned char c1 = (unsigned char)utf8_char[1];
+
+    // Tabela de mapeamento para caracteres especiais
+    if (c0 == 0xC3) { // Caracteres latinos com diacríticos (2 bytes)
+        switch (c1) {
+            case 0x87: return 'c'; // Ç
+            case 0xA7: return 'c'; // ç
+            case 0x83: return 'a'; // Ã
+            case 0xA3: return 'a'; // ã
+            case 0x95: return 'o'; // Õ
+            case 0xB5: return 'o'; // õ
+            case 0x81: return 'a'; // Á
+            case 0xA1: return 'a'; // á
+            case 0x89: return 'e'; // É
+            case 0xA9: return 'e'; // é
+            case 0x8D: return 'i'; // Í
+            case 0xAD: return 'i'; // í
+            case 0x93: return 'o'; // Ó
+            case 0xB3: return 'o'; // ó
+            case 0x9A: return 'u'; // Ú
+            case 0xBA: return 'u'; // ú
+            case 0x9C: return 'u'; // Ü
+            case 0xBC: return 'u'; // ü
+        }
     }
+
+    // Caracteres especiais (hífen mantido)
+    if (c0 == '-') return '-';
+
+    // Caracteres ASCII
+    return tolower(c0);
+}
+
+int get_next_utf8_char(const char* str, char* buf, int max_len) {
+    if (!str || !buf || max_len <= 0) return 0;
+    
+    unsigned char first_byte = (unsigned char)str[0];
+    int char_len = 1;
+    
+    // Determina o comprimento do caractere UTF-8
+    if ((first_byte & 0x80) == 0) {
+        // ASCII (0xxxxxxx)
+        char_len = 1;
+    } else if ((first_byte & 0xE0) == 0xC0) {
+        // 2 bytes (110xxxxx 10xxxxxx)
+        char_len = 2;
+    } else if ((first_byte & 0xF0) == 0xE0) {
+        // 3 bytes (1110xxxx 10xxxxxx 10xxxxxx)
+        char_len = 3;
+    } else if ((first_byte & 0xF8) == 0xF0) {
+        // 4 bytes (11110xxx 10xxxxxx 10xxxxxx 10xxxxxx)
+        char_len = 4;
+    }
+    
+    // Verifica se o buffer é grande o suficiente
+    if (char_len > max_len) char_len = max_len;
+    
+    // Copia o caractere completo
+    memcpy(buf, str, char_len);
+    buf[char_len] = '\0';
+    
+    return char_len;
 }
 
 TrieNode* trie_create_node() {
     TrieNode* node = malloc(sizeof(TrieNode));
     if (!node) exit(EXIT_FAILURE);    
+    
     for (int i = 0; i < 27; i++) node->children[i] = NULL;
     node->is_end_of_word = 0;
     node->occurrences = malloc(10 * sizeof(int));
+    if (!node->occurrences) {
+        free(node);
+        exit(EXIT_FAILURE);
+    }
     node->num_occurrences = 0;
     node->max_occurrences = 10;
-    node->original_word = NULL; // Inicializa a palavra original
+    node->original_word = NULL;
+    node->stored_utf8 = NULL;  // Inicializa como NULL
     return node;
 }
 
 // Modificar a verificação de índice na inserção para incluir hífen
 void trie_insert(TrieNode* root, const char* word, int position) {
+    if (!root || !word || position < 0) return;
+
     TrieNode* current = root;
     char original_word[MAX_WORD_SIZE];
     strncpy(original_word, word, MAX_WORD_SIZE - 1);
     original_word[MAX_WORD_SIZE - 1] = '\0';
 
-    while (*word) {
-        char normalized = normalize_char(*word);
+    const char* ptr = word;
+    
+    while (*ptr) {
+        char utf8_char[5] = {0};
+        int char_len = get_next_utf8_char(ptr, utf8_char, 4);
+        
+        if (char_len == 0) break;
+
+        // Normalização mantendo mapeamento para indexação
+        char normalized = normalize_utf8_char(utf8_char);
         int index;
-        
-        // Mapeia hífen para índice 26
+
+        // Lógica de indexação corrigida
         if (normalized == '-') {
-            index = 26;
-        } else {
+            index = 26; // Slot especial para hífen
+        } else if (normalized >= 'a' && normalized <= 'z') {
             index = normalized - 'a';
-        }
-        
-        // Verificação ajustada para índice 26
-        if (index < 0 || index > 26) { 
-            word++;
+        } else {
+            ptr += char_len; // Ignora caracteres inválidos
             continue;
         }
-        
-        if (current->children[index] == NULL) {
+
+        // Cria nó se necessário
+        if (!current->children[index]) {
             current->children[index] = trie_create_node();
+            
+            // Armazena UTF-8 original com cast explícito
+            current->children[index]->stored_utf8 = (unsigned char*)strdup(utf8_char);
+            
+            if (!current->children[index]->stored_utf8) {
+                fprintf(stderr, "Falha ao alocar memória para caractere UTF-8\n");
+                return;
+            }
         }
-        
+
         current = current->children[index];
-        word++;
-    }
-    
-    current->is_end_of_word = 1;
-    
-    // Armazena a palavra original (com acentos) no nó final
-    if (current->original_word == NULL) {
-        current->original_word = strdup(original_word);
-        if (!current->original_word) {
-            fprintf(stderr, "Erro ao copiar palavra original\n");
-            exit(EXIT_FAILURE);
-        }
+        ptr += char_len; // Avança pelo tamanho real do caractere UTF-8
     }
 
-    // Expande o array de ocorrências se necessário
-    if (current->num_occurrences >= current->max_occurrences) {
-        current->max_occurrences *= 2;
-        current->occurrences = (int*)realloc(current->occurrences, 
-            current->max_occurrences * sizeof(int));
+    // Atualiza final de palavra
+    if (current != root) {
+        current->is_end_of_word = 1;
+
+        // Armazena palavra original se necessário
+        if (!current->original_word) {
+            current->original_word = strdup(original_word);
+            if (!current->original_word) {
+                fprintf(stderr, "Erro ao copiar palavra original\n");
+                return;
+            }
+        }
+
+        // Expande array de ocorrências se necessário
+        if (current->num_occurrences >= current->max_occurrences) {
+            current->max_occurrences *= 2;
+            int* new_occurrences = realloc(current->occurrences, 
+                                        current->max_occurrences * sizeof(int));
+            if (!new_occurrences) {
+                fprintf(stderr, "Erro ao expandir ocorrências\n");
+                return;
+            }
+            current->occurrences = new_occurrences;
+        }
+
+        current->occurrences[current->num_occurrences++] = position;
     }
-    
-    current->occurrences[current->num_occurrences++] = position;
 }
 
 int* trie_search(TrieNode* root, const char* word, int* num_occurrences) {
+    if (!root || !word || !num_occurrences) {
+        *num_occurrences = 0;
+        return NULL;
+    }
+
     TrieNode* current = root;
-    
-    while (*word) {
-        char normalized = normalize_char(*word);
-        int index = normalized - 'a';
+    const char* ptr = word;
+
+    while (*ptr) {
+        char utf8_char[5] = {0};
+        int char_len = get_next_utf8_char(ptr, utf8_char, 4);
         
-        if (index < 0 || index >= 27 || current->children[index] == NULL) {
+        if (char_len == 0) break;
+
+        // Normalização correta usando o caractere UTF-8 completo
+        char normalized = normalize_utf8_char(utf8_char);
+        int index;
+
+        if (normalized == '-') {
+            index = 26;
+        } else if (normalized >= 'a' && normalized <= 'z') {
+            index = normalized - 'a';
+        } else {
+            ptr += char_len; // Ignora caracteres inválidos
+            continue;
+        }
+
+        if (index < 0 || index >= 27 || !current->children[index]) {
             *num_occurrences = 0;
             return NULL;
         }
-        
+
         current = current->children[index];
-        word++;
+        ptr += char_len; // Avança pelo tamanho do caractere UTF-8
     }
-    
-    if (current != NULL && current->is_end_of_word) {
+
+    if (current && current->is_end_of_word) {
         *num_occurrences = current->num_occurrences;
         return current->occurrences;
     }
-    
+
     *num_occurrences = 0;
     return NULL;
 }
@@ -221,7 +303,8 @@ void trie_destroy(TrieNode* root) {
     }
     
     free(root->occurrences);
-    free(root->original_word); // Libera a palavra original
+    free(root->original_word);
+    free(root->stored_utf8); // Libera a memória do caractere UTF-8
     free(root);
 }
 
@@ -448,88 +531,55 @@ int criar_indice_trie_texto(TrieNode** root, const char* texto, char keywords[][
 }
 
 // Nova função para representação visual da Trie
-void imprimir_trie_arvore_recursivo(TrieNode* node, char* prefix, int is_last, char* path, int level) {
-    if (node == NULL) return;
-    
-    // Imprime o prefixo atual
-    printf("%s", prefix);
-    
-    // Imprime a conexão ├── ou └── 
-    if (is_last) {
-        printf("└──");
-        // Atualiza o prefixo para o próximo nível
-        strcat(prefix, "    ");
-    } else {
-        printf("├──");
-        // Atualiza o prefixo para o próximo nível
-        strcat(prefix, "│   ");
-    }
-    
-    // Imprime a letra atual (se não for raiz)
-    if (level > 0) {
-        char letra = path[level-1];
-        printf(" %c", letra);
-    } else {
-        printf(" [Raiz]");
-    }
-    
-    // Se for fim de palavra, imprime a palavra completa e suas ocorrências
-    if (node->is_end_of_word) {
-        printf(" -> %s (", node->original_word);
-        for (int i = 0; i < node->num_occurrences; i++) {
-            printf("%d", node->occurrences[i]);
-            if (i < node->num_occurrences - 1) printf(", ");
-        }
-        printf(")");
-    }
-    printf("\n");
-    
-    // Conta quantos filhos o nó tem para determinar qual é o último
-    int count_children = 0;
-    for (int i = 0; i < 27; i++) { // Conta o número de filhos
-        if (node->children[i] != NULL) {
-            count_children++;
-        }
-    }
-    
-    int current_child = 0;
-    for (int i = 0; i < 27; i++) { // Alterado para 27
-        if (node->children[i] != NULL) {
-            char letra;
-            if (i == 26) { // Trata hífen
-                letra = '-';
-            } else {
-                letra = 'a' + i;
-            }
+void imprimir_trie_arvore_recursivo(TrieNode* node, char* prefix, int is_last, 
+                                        unsigned char* path, int level) {
+    if (!node) return;
 
-            path[level] = letra;
-            path[level + 1] = '\0';
-            
-            // Chama recursivamente
-            imprimir_trie_arvore_recursivo(
-                node->children[i], 
-                prefix, 
-                ++current_child == count_children, 
-                path, 
-                level + 1
-            );
+    printf("%s", prefix);
+    printf(is_last ? "└── " : "├── ");
+
+    if (node->stored_utf8) {
+        printf("%s", node->stored_utf8);
+    } else if (level > 0) {
+        printf("%c", 'a' + path[level-1]);
+    }
+
+    if (node->is_end_of_word) {
+        printf(" -> %s", node->original_word);
+        printf(" (%d ocorrências)", node->num_occurrences);
+    }
+
+    printf("\n");
+
+    char new_prefix[256];
+    snprintf(new_prefix, sizeof(new_prefix), "%s%s", prefix, is_last ? "    " : "│   ");
+    int child_count = 0;
+    for (int i = 0; i < 27; i++) {
+        if (node->children[i]) child_count++;
+    }
+
+    int current_child = 0;
+    for (int i = 0; i < 27; i++) {
+        if (node->children[i]) {
+        unsigned char new_path[MAX_WORD_SIZE] = {0};
+        if (level > 0) memcpy(new_path, path, level);
+        new_path[level] = i;
+
+        imprimir_trie_arvore_recursivo(node->children[i], new_prefix, ++current_child == child_count, new_path, level + 1);
         }
     }
-    
-    // Restaura o prefixo original ao retornar
-    prefix[strlen(prefix) - 4] = '\0';
 }
 
 void imprimir_trie_arvore(TrieNode* root) {
-    if (root == NULL) {
-        printf("Árvore Trie não foi criada.\n");
+    if (!root) {
+        printf("Árvore Trie vazia!\n");
         return;
     }
-    
-    printf("\n=== Representação em Árvore da Trie ===\n");
-    char prefix[1000] = "";
-    char path[MAX_WORD_SIZE] = "";
-    imprimir_trie_arvore_recursivo(root, prefix, 1, path, 0);
+
+    printf("\n=== Estrutura da Árvore Trie ===\n");
+    unsigned char path[MAX_WORD_SIZE] = {0};
+    imprimir_trie_arvore_recursivo(root, "", 1, path, 0);
+    printf("===============================\n\n");
 }
 
 // Função de comparação para qsort

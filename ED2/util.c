@@ -1,44 +1,37 @@
 /**
  * @file util.c
- * @brief Funções utilitárias para processamento de texto e gerenciamento de estruturas de dados
+ * @brief Implementação de funções utilitárias para o índice remissivo
  *
- * Este arquivo contém funções utilitárias para gerenciar processamento de texto, carregamento
- * de palavras-chave e gerenciamento de recursos para implementações de índice remissivo
- * usando tanto Trie quanto Tabela Hash.
- *
- * Variáveis globais:
- * @var texto_hash - Armazenamento para texto a ser processado pela implementação hash
- * @var texto_trie - Armazenamento para texto a ser processado pela implementação trie
- * @var palavras_hash - Array de palavras extraídas do texto para implementação hash
- * @var palavras_trie - Array de palavras extraídas do texto para implementação trie
- * @var posicoes_hash - Array de posições para cada palavra na implementação hash
- * @var posicoes_trie - Array de posições para cada palavra na implementação trie
- * @var num_palavras_hash - Contador para número de palavras na implementação hash
- * @var num_palavras_trie - Contador para número de palavras na implementação trie
- * @var keywords_hash - Array de palavras-chave para implementação hash
- * @var keywords_trie - Array de palavras-chave para implementação trie
- * @var num_keywords_hash - Contador para número de palavras-chave na implementação hash
- * @var num_keywords_trie - Contador para número de palavras-chave na implementação trie
- * @var trie_root - Nó raiz da estrutura trie
- * @var hash_table - Ponteiro para a estrutura da tabela hash
- *
- * Funções:
- * @fn carregar_arquivo_texto - Carrega texto do arquivo para memória
- * @fn carregar_keywords - Carrega palavras-chave do arquivo para memória
- * @fn processar_texto - Processa texto para extrair palavras e suas posições
- * @fn limpar_recursos_hash - Limpa recursos usados pela implementação hash
- * @fn limpar_recursos_trie - Limpa recursos usados pela implementação trie
- * @fn limpar_recursos - Limpa todos os recursos
- * 
- * Getters e setters são fornecidos para todas as variáveis globais para garantir
- * encapsulamento adequado e acesso aos dados.
- * 
- * @note Tamanhos máximos são definidos nos arquivos de cabeçalho
- * @note Todo processamento de texto converte para minúsculas para consistência
- * @warning Gerenciamento de memória é crítico - assegure limpeza adequada usando as funções fornecidas
  * @author Eduardo Brito, Eric Cesconetti, Gabriel Vargas e Paulo Albuquerque
- * @date 25/02/2025
+ * @date 28/02/2025
+ * 
+ * Este arquivo contém a implementação de funções utilitárias para manipulação
+ * de texto, palavras-chave e estruturas de dados (Trie e Hash) usadas no
+ * índice remissivo.
+ *
+ * @note Utiliza variáveis globais para manter estado das estruturas de dados
+ * 
+ * Variáveis globais:
+ * - texto_hash, texto_trie: Armazenam os textos para processamento
+ * - palavras_hash, palavras_trie: Arrays de palavras extraídas
+ * - posicoes_hash, posicoes_trie: Arrays com posições das palavras
+ * - num_palavras_hash, num_palavras_trie: Contadores de palavras
+ * - keywords_hash, keywords_trie: Arrays de palavras-chave
+ * - num_keywords_hash, num_keywords_trie: Contadores de palavras-chave
+ * - trie_root: Raiz da árvore Trie
+ * - hash_table: Tabela hash
+ *
+ * Funções principais:
+ * - carregar_arquivo_texto(): Carrega texto de arquivo
+ * - carregar_keywords(): Carrega palavras-chave de arquivo
+ * - processar_texto(): Extrai e processa palavras do texto
+ * - limpar_recursos_hash(): Libera recursos da tabela hash
+ * - limpar_recursos_trie(): Libera recursos da árvore Trie
+ * - limpar_recursos(): Libera todos os recursos alocados
+ *
+ * Além de várias funções getters e setters para acesso às variáveis globais
  */
+
 #include "indice_remissivo.h"
 #include "trie.h"
 #include "hash.h"

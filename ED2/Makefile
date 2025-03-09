@@ -21,7 +21,7 @@
 # Uso:
 # make       - Compila o programa
 # make clean - Limpa arquivos gerados
-# make valgrind - Executa o programa com Valgrind (NÃO RECOMENDADO REALIZAR TESTES DE ARQUIVOS GRANDES EM COMPUTADORES COM MENOS DE 8GB DE RAM)
+# make valgrind - Executa o programa com Valgrind (NÃO RECOMENDADO REALIZAR TESTES DE ARQUIVOS GRANDES EM COMPUTADORES COM MENOS DE 8GB DE RAM, PODE TRAVAR O COMPUTADOR)
 #
 # Autor: Gabriel Vargas de Melo - UFES - 2025
 # Última modificação: 26/02/2025

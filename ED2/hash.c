@@ -1,38 +1,58 @@
-/**
+/*
  * @file hash.c
- * @brief Implementação de uma tabela hash para indexação de palavras em texto.
+ * @brief Implementação de uma tabela hash para indexação de palavras em texto
  *
- * Este arquivo contém a implementação de uma tabela hash que armazena palavras
- * e suas posições de ocorrência em um texto. A tabela utiliza endereçamento
- * aberto com sondagem linear para resolver colisões e redimensiona 
- * automaticamente quando atinge um fator de carga de 0.7.
+ * @authors Eduardo Brito, Eric Cesconetti, Gabriel Vargas e Paulo Albuquerque
+ * @date 25/02/2025
+ * 
+ * Este arquivo contém a implementação de uma tabela hash que armazena palavras e suas posições
+ * em um texto. A tabela usa endereçamento aberto com sondagem linear para resolução de colisões
+ * e redimensionamento dinâmico para manter a eficiência.
  *
  * Características principais:
  * - Função hash FNV-1a para melhor distribuição
- * - Sondagem linear para resolução de colisões
- * - Redimensionamento automático
+ * - Redimensionamento automático quando fator de carga > 0.7
  * - Suporte a múltiplas ocorrências por palavra
- * - Busca case-insensitive
+ * - Tratamento case-insensitive das palavras
+ * - Visualização da estrutura em diferentes formatos
+ *
+ * Estruturas principais:
+ * @struct HashEntry
+ *    - word: palavra armazenada
+ *    - occurrences: array com posições da palavra
+ *    - num_occurrences: número atual de ocorrências
+ *    - max_occurrences: capacidade máxima do array de ocorrências
+ *
+ * @struct HashTable
+ *    - table: array de HashEntry
+ *    - size: tamanho atual da tabela
+ *    - entries: número de entradas ocupadas
  *
  * Funções principais:
- * - hash_create: Cria uma nova tabela hash
- * - hash_insert: Insere uma palavra e sua posição
- * - hash_search: Busca uma palavra e retorna suas posições
- * - hash_destroy: Libera a memória da tabela
- * - criar_indice_hash: Cria índice a partir de palavras-chave
- * - imprimir_indice_hash: Mostra índice em ordem alfabética
- * - imprimir_estrutura_hash: Visualiza estrutura interna
- * - imprimir_hash_arvore: Visualiza como árvore
+ * - hash_create(): Cria nova tabela hash
+ * - hash_insert(): Insere palavra e posição
+ * - hash_search(): Busca palavra e retorna ocorrências
+ * - hash_resize(): Redimensiona tabela quando necessário
+ * - criar_indice_hash(): Cria índice remissivo
+ * - imprimir_indice_hash(): Imprime índice em ordem alfabética
+ * - imprimir_estrutura_hash(): Visualiza estrutura interna
+ * - imprimir_hash_arvore(): Visualiza em formato de árvore
+ * - hash_destroy(): Libera recursos da tabela
  *
- * @see hash.h para definições das estruturas e interfaces
+ * @note A implementação usa alocação dinâmica de memória e requer
+ * tratamento adequado de erros de alocação.
+ *
+ * @warning É responsabilidade do usuário liberar a memória chamando
+ * hash_destroy() quando a tabela não for mais necessária.
  */
+
 #include "hash.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
 
-/* Cria uma nova tabela hash */
+//Cria uma nova tabela hash
 HashTable* hash_create(int size) {
     HashTable* ht = (HashTable*)malloc(sizeof(HashTable));
     if (ht == NULL) {
@@ -49,7 +69,7 @@ HashTable* hash_create(int size) {
         exit(EXIT_FAILURE);
     }
 
-    // Inicializa todas as entradas
+    //Inicializa todas as entradas
     for (int i = 0; i < size; i++) {
         ht->table[i].word = NULL;
         ht->table[i].occurrences = NULL;
@@ -60,23 +80,23 @@ HashTable* hash_create(int size) {
     return ht;
 }
 
-/* Função de hash melhorada (FNV-1a hash) */
+//Função de hash melhorada (FNV-1a hash)
 unsigned int hash_function(const char* word, int size) {
-    unsigned int hash = 2166136261u;  // Valor inicial (offset) padrão do FNV-1a de 32 bits
+    unsigned int hash = 2166136261u;  //Valor inicial (offset) padrão do FNV-1a de 32 bits
     for (; *word; word++) {
         hash ^= tolower(*word);
-        hash *= 16777619u;  // Número primo usado pelo FNV-1a para multiplicação
+        hash *= 16777619u;  //Número primo usado pelo FNV-1a para multiplicação
     }
     return hash % size;
 }
 
-/* Redimensiona a tabela hash */
+//Redimensiona a tabela hash 
 int hash_resize(HashTable* ht) {
     int old_size = ht->size;
     HashEntry* old_table = ht->table;
     int new_size = old_size * 2 + 1;
     
-    // Criar nova tabela e inicializar todas as entradas
+    //Criar nova tabela e inicializar todas as entradas
     HashEntry* new_table = (HashEntry*)calloc(new_size, sizeof(HashEntry));
     if (new_table == NULL) return 0;
     
@@ -87,17 +107,17 @@ int hash_resize(HashTable* ht) {
         new_table[i].max_occurrences = 0;
     }
     
-    // Reinsere as entradas antigas uma por uma
+    //Reinsere as entradas antigas uma por uma
     for (int i = 0; i < old_size; i++) {
         if (old_table[i].word != NULL) {
             unsigned int index = hash_function(old_table[i].word, new_size);
             unsigned int initial_index = index;
             
-            // Encontra nova posição usando sondagem linear
+            //Encontra nova posição usando sondagem linear
             while (new_table[index].word != NULL) {
                 index = (index + 1) % new_size;
                 if (index == initial_index) {
-                    // Falha na realocação, restaura estado original
+                    //Falha na realocação, restaura estado original
                     for (int j = 0; j < new_size; j++) {
                         if (new_table[j].word != NULL) {
                             free(new_table[j].word);
@@ -109,7 +129,7 @@ int hash_resize(HashTable* ht) {
                 }
             }
             
-            // Copia a entrada para a nova posição
+            //Copia a entrada para a nova posição
             new_table[index].word = old_table[i].word;
             new_table[index].occurrences = old_table[i].occurrences;
             new_table[index].num_occurrences = old_table[i].num_occurrences;
@@ -117,19 +137,19 @@ int hash_resize(HashTable* ht) {
         }
     }
     
-    // Atualiza a tabela hash
-    free(old_table);  // Libera apenas a tabela, não os dados
+    //Atualiza a tabela hash
+    free(old_table);  //Libera apenas a tabela, não os dados
     ht->table = new_table;
     ht->size = new_size;
     
     return 1;
 }
 
-/* Insere uma palavra na tabela hash */
+//Insere uma palavra na tabela hash 
 void hash_insert(HashTable* ht, const char* word, int position) {
     if (!ht || !word) return;
     
-    // Redimensiona se necessário
+    //Redimensiona se necessário
     if (ht->entries > ht->size * 0.7) {
         if (!hash_resize(ht)) {
             fprintf(stderr, "Falha ao redimensionar a tabela hash\n");
@@ -140,7 +160,7 @@ void hash_insert(HashTable* ht, const char* word, int position) {
     unsigned int index = hash_function(word, ht->size);
     unsigned int initial_index = index;
 
-    // Busca posição usando sondagem linear
+    //Busca posição usando sondagem linear
     while (ht->table[index].word != NULL && strcasecmp(ht->table[index].word, word) != 0) {
         index = (index + 1) % ht->size;
         if (index == initial_index) {
@@ -149,7 +169,7 @@ void hash_insert(HashTable* ht, const char* word, int position) {
         }
     }
 
-    // Nova entrada
+    //Nova entrada
     if (ht->table[index].word == NULL) {
         ht->table[index].word = strdup(word);
         if (ht->table[index].word == NULL) {
@@ -168,14 +188,14 @@ void hash_insert(HashTable* ht, const char* word, int position) {
         ht->entries++;
     }
 
-    // Verifica se posição já existe (duplicata)
+    //Verifica se posição já existe (duplicata)
     for (int i = 0; i < ht->table[index].num_occurrences; i++) {
         if (ht->table[index].occurrences[i] == position) {
-            return;  // Não insere duplicatas
+            return;  //Não insere duplicatas
         }
     }
 
-    // Expande array se necessário
+    //Expande array se necessário
     if (ht->table[index].num_occurrences >= ht->table[index].max_occurrences) {
         int new_size = ht->table[index].max_occurrences * 2;
         int* new_arr = (int*)realloc(ht->table[index].occurrences, new_size * sizeof(int));
@@ -187,7 +207,7 @@ void hash_insert(HashTable* ht, const char* word, int position) {
         ht->table[index].max_occurrences = new_size;
     }
 
-    // Insere mantendo ordem
+    //Insere mantendo ordem
     int i = ht->table[index].num_occurrences;
     while (i > 0 && ht->table[index].occurrences[i-1] > position) {
         ht->table[index].occurrences[i] = ht->table[index].occurrences[i-1];
@@ -197,7 +217,7 @@ void hash_insert(HashTable* ht, const char* word, int position) {
     ht->table[index].num_occurrences++;
 }
 
-// Busca uma palavra na tabela hash
+//Busca uma palavra na tabela hash
 int* hash_search(HashTable* ht, const char* word, int* num_occurrences) {
     if (!ht || !word || !num_occurrences) {
         if (num_occurrences) *num_occurrences = 0;
@@ -220,27 +240,27 @@ int* hash_search(HashTable* ht, const char* word, int* num_occurrences) {
     return NULL;
 }
 
-// Cria o índice remissivo usando hash de forma otimizada
+//Cria o índice remissivo usando hash de forma otimizada
 int criar_indice_hash(HashTable** ht, char* palavras[], int* posicoes[], int num_palavras, 
                      char keywords[][MAX_WORD_SIZE], int num_keywords) {
     if (*ht != NULL) hash_destroy(*ht);
     
-    // Cria tabela com tamanho inicial baseado no número de keywords
+    //Cria tabela com tamanho inicial baseado no número de keywords
     int initial_size = num_keywords * 2;
     if (initial_size < INITIAL_HASH_SIZE) initial_size = INITIAL_HASH_SIZE;
     *ht = hash_create(initial_size);
     
-    // Cria hash table auxiliar para keywords para busca O(1)
+    //Cria hash table auxiliar para keywords para busca O(1)
     HashTable* keyword_ht = hash_create(num_keywords * 2);
     for (int i = 0; i < num_keywords; i++) {
-        if (keywords[i][0] != '\0') {  // Verifica se a keyword é válida
+        if (keywords[i][0] != '\0') {  //Verifica se a keyword é válida
             hash_insert(keyword_ht, keywords[i], -1);
         }
     }
     
-    // Processa palavras
+    //Processa palavras
     for (int i = 0; i < num_palavras; i++) {
-        if (palavras[i] && palavras[i][0] != '\0') {  // Verifica se a palavra é válida
+        if (palavras[i] && palavras[i][0] != '\0') {  //Verifica se a palavra é válida
             int dummy;
             if (hash_search(keyword_ht, palavras[i], &dummy) != NULL) {
                 for (int j = 1; j <= posicoes[i][0]; j++) {
@@ -254,44 +274,44 @@ int criar_indice_hash(HashTable** ht, char* palavras[], int* posicoes[], int num
     return 1;
 }
 
-// Estrutura auxiliar para ordenação
+//Estrutura auxiliar para ordenação
 typedef struct {
     char* word;
     int* positions;
     int count;
 } WordEntry;
 
-// Função de comparação para qsort
+//Função de comparação para qsort
 static int compare_entries(const void* a, const void* b) {
     return strcasecmp(((WordEntry*)a)->word, ((WordEntry*)b)->word);
 }
 
-// Imprime o índice em ordem alfabética
+//Imprime o índice em ordem alfabética
 void imprimir_indice_hash(HashTable* ht) {
     if (ht == NULL) {
         printf("Índice hash não criado.\n");
         return;
     }
 
-    // Obtém as palavras-chave que foram utilizadas para criar o índice
+    //Obtém as palavras-chave que foram utilizadas para criar o índice
     char (*keywords)[MAX_WORD_SIZE] = get_keywords_hash();
     int num_keywords = get_num_keywords_hash();
     
-    // Marca as palavras-chave que forem encontradas
+    //Marca as palavras-chave que forem encontradas
     int* found_keywords = (int*)calloc(num_keywords, sizeof(int));
     if (!found_keywords) {
         printf("Erro ao alocar memória para verificação de palavras-chave.\n");
         return;
     }
 
-    // Aloca array de entradas
+    //Aloca array de entradas
     WordEntry* entries = (WordEntry*)malloc(ht->entries * sizeof(WordEntry));
     if (!entries) {
         free(found_keywords);
         return;
     }
     
-    // Coleta entradas não nulas
+    //Coleta entradas não nulas
     int idx = 0;
     for (int i = 0; i < ht->size; i++) {
         if (ht->table[i].word != NULL) {
@@ -299,7 +319,7 @@ void imprimir_indice_hash(HashTable* ht) {
             entries[idx].positions = ht->table[i].occurrences;
             entries[idx].count = ht->table[i].num_occurrences;
             
-            // Marca a palavra-chave como encontrada
+            //Marca a palavra-chave como encontrada
             for (int j = 0; j < num_keywords; j++) {
                 if (strcasecmp(keywords[j], entries[idx].word) == 0) {
                     found_keywords[j] = 1;
@@ -311,10 +331,10 @@ void imprimir_indice_hash(HashTable* ht) {
         }
     }
 
-    // Ordena usando qsort
+    //Ordena usando qsort
     qsort(entries, ht->entries, sizeof(WordEntry), compare_entries);
 
-    // Imprime resultado
+    //Imprime resultado
     printf("\n=== Índice Hash ===\n");
     for (int i = 0; i < idx; i++) {
         printf("%s: ", entries[i].word);
@@ -325,7 +345,7 @@ void imprimir_indice_hash(HashTable* ht) {
         printf("\n");
     }
     
-    // Imprime as palavras-chave que não foram encontradas
+    //Imprime as palavras-chave que não foram encontradas
     for (int i = 0; i < num_keywords; i++) {
         if (!found_keywords[i] && keywords[i][0] != '\0') {
             printf("%s: Não foi encontrada no texto.\n", keywords[i]);
@@ -336,7 +356,7 @@ void imprimir_indice_hash(HashTable* ht) {
     free(found_keywords);
 }
 
-// Função para visualizar a estrutura da tabela hash em formato de árvore
+//Função para visualizar a estrutura da tabela hash em formato de árvore
 void imprimir_estrutura_hash(HashTable* ht) {
     if (ht == NULL) {
         printf("Tabela hash não criada.\n");
@@ -346,7 +366,7 @@ void imprimir_estrutura_hash(HashTable* ht) {
     printf("\n=== Estrutura da Tabela Hash (tamanho: %d) ===\n", ht->size);
     printf("Raiz [%d entradas]\n", ht->entries);
     
-    // Contar slots vazios e preenchidos
+    //Contar slots vazios e preenchidos
     int vazios = 0;
     for (int i = 0; i < ht->size; i++) {
         if (ht->table[i].word == NULL) {
@@ -357,7 +377,7 @@ void imprimir_estrutura_hash(HashTable* ht) {
     printf("├── Slots preenchidos: %d (%.1f%%)\n", ht->entries, (float)ht->entries / ht->size * 100);
     printf("└── Slots vazios: %d (%.1f%%)\n", vazios, (float)vazios / ht->size * 100);
     
-    // Mostrar distribuição de colisões
+    //Mostrar distribuição de colisões
     int max_colisoes = 0;
     int* colisoes = (int*)calloc(ht->size, sizeof(int));
     
@@ -366,7 +386,7 @@ void imprimir_estrutura_hash(HashTable* ht) {
         return;
     }
     
-    // Calcular colisões
+    //Calcular colisões
     for (int i = 0; i < ht->size; i++) {
         if (ht->table[i].word != NULL) {
             unsigned int pos_ideal = hash_function(ht->table[i].word, ht->size);
@@ -394,7 +414,7 @@ void imprimir_estrutura_hash(HashTable* ht) {
     
     free(colisoes);
     
-    // Mostrar amostra da tabela (primeiros 20 slots não vazios)
+    //Mostrar amostra da tabela (primeiros 20 slots não vazios)
     printf("\n=== Amostra da Tabela Hash ===\n");
     int mostrados = 0;
     for (int i = 0; i < ht->size && mostrados < 20; i++) {
@@ -413,7 +433,7 @@ void imprimir_estrutura_hash(HashTable* ht) {
     }
 }
 
-// Função para visualizar a estrutura da tabela hash como uma árvore
+//Função para visualizar a estrutura da tabela hash como uma árvore
 void imprimir_hash_arvore(HashTable* ht) {
     if (ht == NULL) {
         printf("Tabela hash não criada.\n");
@@ -423,7 +443,7 @@ void imprimir_hash_arvore(HashTable* ht) {
     printf("\n=== Representação em Árvore da Tabela Hash ===\n");
     printf("Raiz [%d entradas em %d slots]\n", ht->entries, ht->size);
     
-    // Organizar palavras em ordem alfabética para melhor visualização
+    //Organizar palavras em ordem alfabética para melhor visualização
     WordEntry* entries = (WordEntry*)malloc(ht->entries * sizeof(WordEntry));
     if (!entries) {
         printf("Erro de alocação de memória para visualização em árvore.\n");
@@ -440,10 +460,10 @@ void imprimir_hash_arvore(HashTable* ht) {
         }
     }
     
-    // Ordena
+    //Ordena
     qsort(entries, idx, sizeof(WordEntry), compare_entries);
     
-    // Imprime em formato de árvore
+    //Imprime em formato de árvore
     for (int i = 0; i < idx; i++) {
         if (i == idx - 1) {
             printf("└── %s (%d ocorrências)\n", entries[i].word, entries[i].count);
@@ -469,7 +489,7 @@ void imprimir_hash_arvore(HashTable* ht) {
     free(entries);
 }
 
-// Destrói a tabela hash
+//Destrói a tabela hash
 void hash_destroy(HashTable* ht) {
     if (ht == NULL) return;
 
